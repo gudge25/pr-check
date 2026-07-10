@@ -34,26 +34,28 @@ jobs:
           CLAUDE_CODE_SUBAGENT_MODEL: openrouter/free
 
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           anthropic_api_key: ${{ secrets.OPENROUTER_API_KEY }}
 
           show_full_output: true
 
           claude_args: |
             --model openrouter/free
-            --max-turns 15
-            --allowedTools "Bash(gh pr diff:*),Bash(gh pr comment:*)"
+            --max-turns 20
+            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*)"
 
           prompt: |
             Review the current pull request.
 
-            First inspect the complete PR diff.
+            First inspect:
+            - the complete PR diff
+            - the PR metadata
+            - only code changed by this pull request
 
             Focus only on real problems:
             - bugs and incorrect logic
             - security vulnerabilities
             - race conditions
-            - missing error handling
+            - missing error handling that can cause failures
             - breaking changes
             - database and migration risks
             - Docker, Kubernetes, and GitHub Actions mistakes
@@ -63,24 +65,65 @@ jobs:
             - minor style preferences
             - harmless naming choices
             - praise
+            - unchanged code
 
             For every real issue:
-            - explain the exact problem
+            - identify the exact changed file
+            - identify the exact changed line
+            - explain the problem
             - explain the impact
-            - reference the relevant file and line
             - suggest a practical fix
 
-            At the end, you MUST post exactly one summary comment
-            to the current pull request using:
+            IMPORTANT:
+            You MUST post a real GitHub Pull Request Review with inline comments.
 
-            gh pr comment ${{ github.event.pull_request.number }} --body "YOUR REVIEW"
+            Repository:
+            ${{ github.repository }}
 
-            The comment must contain:
-            - a short PR review summary
-            - all significant issues found
-            - file and line references where possible
+            Pull request:
+            ${{ github.event.pull_request.number }}
 
-            If no significant issues are found, post:
-            "AI PR Review: No significant problems found."
+            Commit SHA:
+            ${{ github.event.pull_request.head.sha }}
 
-            Do not finish without posting the PR comment.
+            Use the GitHub API through `gh api`.
+
+            Create exactly ONE review containing:
+            - one inline comment for each significant issue
+            - a short summary in the review body
+
+            Submit the review to:
+
+            POST /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews
+
+            The JSON request body must use this structure:
+
+            {
+              "commit_id": "${{ github.event.pull_request.head.sha }}",
+              "body": "AI PR Review summary",
+              "event": "COMMENT",
+              "comments": [
+                {
+                  "path": "path/to/file",
+                  "line": 10,
+                  "side": "RIGHT",
+                  "body": "Explain the problem, impact, and suggested fix."
+                }
+              ]
+            }
+
+            Rules:
+            - Only comment on lines that are part of the PR diff.
+            - Use side RIGHT for added or modified lines.
+            - Do not comment on unchanged lines.
+            - Do not create duplicate comments.
+            - Do not submit APPROVE.
+            - Do not submit REQUEST_CHANGES.
+            - Use event COMMENT.
+
+            If no significant issues are found, create one review with
+            no inline comments and this body:
+
+            AI PR Review: No significant problems found.
+
+            You MUST submit the GitHub PR review before finishing.
