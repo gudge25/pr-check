@@ -1,0 +1,93 @@
+name: Claude Auto Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Review PR
+        uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_API_KEY: ""
+
+        with:
+          anthropic_api_key: ${{ secrets.OPENROUTER_API_KEY }}
+          show_full_output: false
+
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request.
+
+            Focus on:
+            - bugs and incorrect logic
+            - security vulnerabilities
+            - race conditions
+            - runtime errors
+            - breaking changes
+            - database and migration risks
+
+            For every issue found, the inline comment MUST include:
+            1. What is wrong
+            2. Why it is a problem
+            3. A concrete solution
+            4. A corrected code example when possible
+            
+            Use `mcp__github_inline_comment__create_inline_comment`
+            with `confirmed: true` to post the issue directly on the relevant code.
+            
+            Do not only describe the problem. Always explain exactly how to fix it.
+
+            If you find one or more significant issues that should block merging,
+            you MUST finish by running:
+
+            gh pr review ${{ github.event.pull_request.number }} --request-changes --body "AI_REVIEW_BLOCKING"
+
+            If you find no significant blocking issues, you MUST finish by running:
+
+            gh pr review ${{ github.event.pull_request.number }} --comment --body "AI_REVIEW_PASSED"
+
+            Do not finish without submitting exactly one of these two verdicts.
+
+          claude_args: |
+            --model poolside/laguna-m.1:free
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr review:*)"
+
+      - name: Enforce AI review verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          verdict=$(gh pr view "$PR_NUMBER" \
+            --json reviews \
+            --jq '[.reviews[] | select(.body == "AI_REVIEW_BLOCKING" or .body == "AI_REVIEW_PASSED")] | last | .body')
+
+          echo "AI verdict: $verdict"
+
+          if [ "$verdict" = "AI_REVIEW_BLOCKING" ]; then
+            echo "::error::AI review found blocking issues"
+            exit 1
+          fi
+
+          if [ "$verdict" != "AI_REVIEW_PASSED" ]; then
+            echo "::error::AI reviewer did not submit a valid verdict"
+            exit 1
+          fi
+
+          echo "AI review passed"
