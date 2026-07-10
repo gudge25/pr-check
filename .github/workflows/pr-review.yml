@@ -28,10 +28,10 @@ jobs:
           ANTHROPIC_AUTH_TOKEN: ${{ secrets.OPENROUTER_API_KEY }}
           ANTHROPIC_API_KEY: ""
 
-          ANTHROPIC_DEFAULT_OPUS_MODEL: openai/gpt-oss-120b:free
-          ANTHROPIC_DEFAULT_SONNET_MODEL: openai/gpt-oss-120b:free
-          ANTHROPIC_DEFAULT_HAIKU_MODEL: openai/gpt-oss-120b:free
-          CLAUDE_CODE_SUBAGENT_MODEL: openai/gpt-oss-120b:free
+          ANTHROPIC_DEFAULT_OPUS_MODEL: openrouter/free
+          ANTHROPIC_DEFAULT_SONNET_MODEL: openrouter/free
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: openrouter/free
+          CLAUDE_CODE_SUBAGENT_MODEL: openrouter/free
 
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
