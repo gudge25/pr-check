@@ -43,8 +43,16 @@ jobs:
             - breaking changes
             - database and migration risks
 
+            For every issue found, the inline comment MUST include:
+            1. What is wrong
+            2. Why it is a problem
+            3. A concrete solution
+            4. A corrected code example when possible
+            
             Use `mcp__github_inline_comment__create_inline_comment`
-            with `confirmed: true` for specific code issues.
+            with `confirmed: true` to post the issue directly on the relevant code.
+            
+            Do not only describe the problem. Always explain exactly how to fix it.
 
             If you find one or more significant issues that should block merging,
             you MUST finish by running:
