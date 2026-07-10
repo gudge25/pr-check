@@ -21,15 +21,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Review PR with Claude
+      - name: Review PR with AI
         uses: anthropics/claude-code-action@v1
         env:
           ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_API_KEY: ""
+
+          ANTHROPIC_DEFAULT_OPUS_MODEL: openai/gpt-oss-120b:free
+          ANTHROPIC_DEFAULT_SONNET_MODEL: openai/gpt-oss-120b:free
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: openai/gpt-oss-120b:free
+          CLAUDE_CODE_SUBAGENT_MODEL: openai/gpt-oss-120b:free
+
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           anthropic_api_key: ${{ secrets.OPENROUTER_API_KEY }}
 
+          show_full_output: true
+
+          claude_args: |
+            --model openai/gpt-oss-120b:free
+            --max-turns 15
+            --allowedTools "Bash(gh pr diff:*),Bash(gh pr comment:*)"
+
           prompt: |
-            Review this pull request.
+            Review the current pull request.
+
+            First inspect the complete PR diff.
 
             Focus only on real problems:
             - bugs and incorrect logic
@@ -44,12 +62,25 @@ jobs:
             - formatting
             - minor style preferences
             - harmless naming choices
-            - praise or summaries
+            - praise
 
-            For every issue:
+            For every real issue:
             - explain the exact problem
             - explain the impact
-            - point to the relevant code
+            - reference the relevant file and line
             - suggest a practical fix
 
-            If there are no real issues, say that no significant problems were found.
+            At the end, you MUST post exactly one summary comment
+            to the current pull request using:
+
+            gh pr comment ${{ github.event.pull_request.number }} --body "YOUR REVIEW"
+
+            The comment must contain:
+            - a short PR review summary
+            - all significant issues found
+            - file and line references where possible
+
+            If no significant issues are found, post:
+            "AI PR Review: No significant problems found."
+
+            Do not finish without posting the PR comment.
