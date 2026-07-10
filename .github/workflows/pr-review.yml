@@ -1,0 +1,55 @@
+name: AI PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Review PR with Claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: https://openrouter.ai/api
+        with:
+          anthropic_api_key: ${{ secrets.OPENROUTER_API_KEY }}
+
+          prompt: |
+            Review this pull request.
+
+            Focus only on real problems:
+            - bugs and incorrect logic
+            - security vulnerabilities
+            - race conditions
+            - missing error handling
+            - breaking changes
+            - database and migration risks
+            - Docker, Kubernetes, and GitHub Actions mistakes
+
+            Do not comment on:
+            - formatting
+            - minor style preferences
+            - harmless naming choices
+            - praise or summaries
+
+            For every issue:
+            - explain the exact problem
+            - explain the impact
+            - point to the relevant code
+            - suggest a practical fix
+
+            If there are no real issues, say that no significant problems were found.
